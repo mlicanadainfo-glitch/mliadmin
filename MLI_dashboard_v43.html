@@ -1196,43 +1196,30 @@ function calcExamDates(c) {
 
   const note = (c.note || '');
   const skip = parseSkipDates(note);
-  const isNew = start >= '2026-02-01'; // Feb 2026 onwards = new format
+  // "New" format classes (A0+A1 started Feb 2026 or later)
+  const NEW_CODES = new Set(['0213','0224','0303','0305','0306','0316','0324','0326']);
+  const baseCode = (c.code||'').replace(/\s.*/,'').substring(0,4);
+  const isNew = NEW_CODES.has(baseCode);
 
   if (ph === 'A0+A1') {
     const midN = isNew ? 16 : 18;
     const finN = isNew ? 29 : 32;
     const mid = nthClassDate(start, days, midN, skip);
-    // 期末考要跳過期中考那天，再往後推
-    const skipWithMid = mid ? new Set([...skip, mid]) : skip;
-    return {
-      mid,
-      fin: nthClassDate(start, days, finN, skipWithMid)
-    };
+    // 期末考堂數已包含期中考那堂，直接從頭數不跳過
+    return { mid, fin: nthClassDate(start, days, finN, skip) };
   }
   if (ph === 'A2') {
     const finN = isNew ? 34 : 35;
     const mid = nthClassDate(start, days, 19, skip);
-    const skipWithMid = mid ? new Set([...skip, mid]) : skip;
-    return {
-      mid,
-      fin: nthClassDate(start, days, finN, skipWithMid)
-    };
+    return { mid, fin: nthClassDate(start, days, finN, skip) };
   }
   if (ph === 'Phase1' || ph === 'Phase2' || ph === 'Phase3') {
     const mid = nthClassDate(start, days, 20, skip);
-    const skipWithMid = mid ? new Set([...skip, mid]) : skip;
-    return {
-      mid,
-      fin: nthClassDate(start, days, 40, skipWithMid)
-    };
+    return { mid, fin: nthClassDate(start, days, 40, skip) };
   }
   if (['Level1','Level2','Level3','Level4'].includes(ph)) {
     const mid = nthClassDate(start, days, 18, skip);
-    const skipWithMid = mid ? new Set([...skip, mid]) : skip;
-    return {
-      mid,
-      fin: nthClassDate(start, days, 32, skipWithMid)
-    };
+    return { mid, fin: nthClassDate(start, days, 32, skip) };
   }
   // CLB5/6/7, Level5/6, etc: no auto-calc (fin is last class, set manually)
   return null;
@@ -1883,7 +1870,7 @@ const CN_STARTS=getCNNewDates();
 
 function getEvs(y,m){
   const ms=y+'-'+String(m).padStart(2,'0'),evs=[];
-  CLS.forEach(c=>{
+  getAllCLS().forEach(c=>{
     // exam events — always include level/phase
     const lvl=' ['+c.ph+']';
     const effD=getEffectiveDates(c);
@@ -1972,14 +1959,62 @@ function cf(f,btn){calF=f;document.querySelectorAll('#p0 .fb').forEach(b=>b.clas
 function openDay(ds,mn,d,y,m){
   const evs=getEvs(y,m).filter(e=>e.date===ds);if(!evs.length)return;
   document.getElementById('mtit').textContent=y+'年'+mn+d+'日';
-  document.getElementById('mbody').innerHTML=evs.map(e=>{
-    const c=CLS.find(x=>x.id&&(x.code===e.label.split(' ')[0]||e.label.startsWith(x.code)));
+  document.getElementById('mbody').innerHTML=evs.map((e,ei)=>{
+    const c=e.c||CLS.find(x=>x.id&&(x.code===e.label.split(' ')[0]||e.label.startsWith(x.code)));
+    const isExam=e.type==='exam';
+    const isMid=isExam&&e.label.includes('期中');
+    const canEdit=isExam&&c;
+    const editBtn=canEdit
+      ?'<button onclick="openExamDateEdit(\''+c.id+'\',\''+(isMid?'mid':'fin')+'\')" style="font-size:10px;padding:2px 8px;background:var(--bg4);border:1px solid var(--border2);border-radius:4px;color:var(--text2);cursor:pointer;margin-top:4px">✎ 修改日期</button>'
+      :'';
     return '<div class="mi"><div class="mi-t">'+(e.type==='upg'?'⬆ 升班：':e.type==='new'?'🆕 新班：':'📝 考試：')+e.label+'</div>'
       +(c?'<div class="mi-s">老師：'+(c.tch||[]).join(' / ')+'<br>人數：'+c.stu+' 人<br>時間：'+c.time+'</div>':'')
       +(e.u?'<div class="mi-s">老師：'+(e.u.tch||[]).join(' / ')+'<br>人數：'+e.u.stu+' 人<br>上課日：'+e.u.days+'</div>':'')
+      +editBtn
     +'</div>';
   }).join('');
   document.getElementById('modal').classList.add('on');
+}
+function openExamDateEdit(clsId, field){
+  const c=getAllCLS().find(x=>x.id===clsId);if(!c)return;
+  const ov=getO(clsId);
+  const autoD=calcExamDates(c);
+  const current=ov[field]!==undefined?ov[field]:(autoD?autoD[field]:(c[field]||''));
+  const label=field==='mid'?'期中考':'期末考';
+  const autoVal=autoD?autoD[field]:'';
+  document.getElementById('mtit').textContent='修改 '+c.code+' '+label+' 日期';
+  document.getElementById('mbody').innerHTML=`
+    <div style="margin-bottom:10px;font-size:12px;color:var(--text3)">
+      班級：<strong style="color:var(--text)">${c.code}</strong>　
+      課程：<strong style="color:var(--cyan)">${c.ph}</strong>
+    </div>
+    ${autoVal?`<div style="font-size:11px;color:var(--text3);margin-bottom:8px">系統自動計算：<span style="color:var(--text2)">${autoVal}</span></div>`:''}
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">${label}日期 *</label>
+      <input id="exam-date-inp" type="date" value="${current||''}" style="width:100%;padding:6px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="primary" onclick="confirmExamDate('${clsId}','${field}')" style="flex:1;padding:8px">✓ 確認</button>
+      ${current&&ov[field]!==undefined?`<button onclick="clearExamDate('${clsId}','${field}')" style="padding:8px 14px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text2);cursor:pointer;font-size:12px">↩ 還原自動</button>`:''}
+    </div>`;
+  document.getElementById('modal').classList.add('on');
+  setTimeout(()=>document.getElementById('exam-date-inp').focus(),50);
+}
+function confirmExamDate(clsId,field){
+  const val=document.getElementById('exam-date-inp').value;
+  if(!val){alert('請選擇日期');return;}
+  const c=getAllCLS().find(x=>x.id===clsId);
+  setO(clsId,field,val);
+  LOGS.unshift({id:Date.now(),type:'note',cls:clsId,date:TODAY,tch:'',delay:'',note:'手動修改 '+(c?c.code:clsId)+' '+(field==='mid'?'期中':'期末')+'考日期 → '+val});
+  save();closeModal();renderCal();
+}
+function clearExamDate(clsId,field){
+  const ov=getO(clsId);
+  delete ov[field];
+  setO(clsId,'_ts',Date.now()); // force save
+  CLS_OVR[clsId]=ov;
+  saveCO();
+  closeModal();renderCal();
 }
 
 // ── CLASS TABLE ──
