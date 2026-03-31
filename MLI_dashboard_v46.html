@@ -1229,35 +1229,37 @@ function calcExamDates(c) {
     const mid = nthClassDate(start, days, 18, skip);
     return { mid, fin: nthClassDate(start, days, 32, skip) };
   }
-  // CLB5: 33堂，有兩師時兩天考
+  // CLB5: 班號（A0+A1開課日）在 2025-10 ~ 2026-01 → 129hr（42/43堂），其他 → 99hr（32/33堂）
   if (ph === 'CLB5') {
-    const fin = nthClassDate(start, days, 33, skip);
+    const CLB5_129 = new Set(['1018','1024','1120','1127','1210','0109','0120','0924','0926']);
+    const is129 = CLB5_129.has(baseCode);
+    const fin = nthClassDate(start, days, is129 ? 42 : 32, skip);
     const tchCount = (c.tch||[]).length;
-    const fin2 = tchCount >= 2 ? nthClassDate(start, days, 32, skip) : null;
+    const fin2 = tchCount >= 2 ? nthClassDate(start, days, is129 ? 43 : 33, skip) : null;
     return { mid: null, fin, fin2 };
   }
   // CLB6: 17堂，永遠兩天考
   if (ph === 'CLB6') {
-    const fin = nthClassDate(start, days, 17, skip);
-    const fin2 = nthClassDate(start, days, 16, skip);
+    const fin = nthClassDate(start, days, 16, skip);
+    const fin2 = nthClassDate(start, days, 17, skip);
     return { mid: null, fin, fin2 };
   }
   // CLB7: 17堂，永遠兩天考
   if (ph === 'CLB7') {
-    const fin = nthClassDate(start, days, 17, skip);
-    const fin2 = nthClassDate(start, days, 16, skip);
+    const fin = nthClassDate(start, days, 16, skip);
+    const fin2 = nthClassDate(start, days, 17, skip);
     return { mid: null, fin, fin2 };
   }
   // Level5: 20堂，永遠兩天考
   if (ph === 'Level5') {
-    const fin = nthClassDate(start, days, 20, skip);
-    const fin2 = nthClassDate(start, days, 19, skip);
+    const fin = nthClassDate(start, days, 19, skip);
+    const fin2 = nthClassDate(start, days, 20, skip);
     return { mid: null, fin, fin2 };
   }
   // Level6: 20堂，永遠兩天考
   if (ph === 'Level6') {
-    const fin = nthClassDate(start, days, 20, skip);
-    const fin2 = nthClassDate(start, days, 19, skip);
+    const fin = nthClassDate(start, days, 19, skip);
+    const fin2 = nthClassDate(start, days, 20, skip);
     return { mid: null, fin, fin2 };
   }
   return null;
@@ -1302,7 +1304,7 @@ const CLS = [
   {id:'1127-M',code:'1127 M',nm:'CLB4 A2',cat:'cn',sh:'M',days:'一三四',time:'9:30–12:30',tch:['Helen'],stu:7,ph:'A2',startDate:'2026-02-26',note:'升CLB5需換外教'},
   {id:'1120-M',code:'1120 M',nm:'CLB5',cat:'cn',sh:'M',days:'一～五',time:'9:15–12:15',tch:['Sharfaa(一五)','Alim(二三四)'],stu:7,ph:'CLB5',fin:'2026-05-01',fin2:'2026-05-02',clb:true,startDate:'2026-03-03',note:'Alim 3/24加入，之前是Vera'},
   {id:'0924-M',code:'0924 M',nm:'CLB4 A2',cat:'cn',sh:'M',days:'一三五',time:'9:00–12:00',tch:['Xing'],stu:5,ph:'A2',startDate:'2026-01-16',note:'升CLB5 Xing週一+Emna週三五'},
-  {id:'0924-M-C5',code:'0924 M CLB5',nm:'CLB5',cat:'cn',sh:'M',days:'一三五',time:'9:00–12:00',tch:['Xing(一)','待安排外教(三五)'],stu:5,ph:'CLB5',fin:'2026-05-20',startDate:'2026-04-10'},
+  {id:'0924-M-C5',code:'0924 M CLB5',nm:'CLB5',cat:'cn',sh:'M',days:'一三五',time:'9:00–12:00',tch:['Xing(一)','待安排外教(三五)'],stu:5,ph:'CLB5',fin:'2026-05-20',startDate:'2026-04-13',_pending:true},
   {id:'0731-C7',code:'0731 CLB7',nm:'CLB7',cat:'cn',sh:'M',days:'一三四五',time:'9:30–12:30',tch:['Afaf'],stu:4,ph:'CLB7',fin:'2026-04-22',fin2:'2026-04-23',clb:true,startDate:'2026-03-25'},
   // ── 國際白班 (M) ──
   {id:'0129-i',code:'0129',nm:'Phase 1',cat:'intl',sh:'M',days:'一～四',time:'9:30–12:30',tch:['Lyon'],stu:12,ph:'Phase1',startDate:'2026-01-29'},
@@ -1371,7 +1373,7 @@ const UPG = [
   // A2→CLB5 (need foreign teacher)
   {code:'0926 E',ph:'A2',fin:'2026-03-31',ud:'2026-04-04',next:'CLB5',days:'二五六',tch:['Xing(二)','Wissem(五六)'],stu:8,cat:'cn'},
   {code:'1018 E',ph:'A2',fin:'2026-04-07',ud:'2026-04-09',next:'CLB5',days:'二四六',tch:['Dai→待安排外教'],stu:6,cat:'cn',fs:true},
-  {code:'0924 M',ph:'A2',fin:'2026-04-08',ud:'2026-04-10',next:'CLB5',days:'一三五',tch:['Xing(一)','待安排外教(三五)'],stu:5,cat:'cn',fs:true},
+  {code:'0924 M',ph:'A2',fin:'2026-04-10',ud:'2026-04-13',next:'CLB5',days:'一三五',tch:['Xing(一)','待安排外教(三五)'],stu:5,cat:'cn',fs:true},
   {code:'1024 E',ph:'A2',fin:'2026-04-10',ud:'2026-04-13',next:'CLB5',days:'一三五',tch:['Toby(一)','外教(三五)'],stu:7,cat:'cn',fs:true},
   {code:'0109 M',ph:'A2',fin:'2026-04-14',ud:'2026-04-15',next:'CLB5',days:'一～五',tch:['Vera','Elnaz'],stu:7,cat:'cn'},
   {code:'0120 M',ph:'A2',fin:'2026-04-23',ud:'2026-04-24',next:'CLB5',days:'一～五',tch:['Dai→待安排外教'],stu:7,cat:'cn',fs:true},
@@ -1920,8 +1922,8 @@ function getEvs(y,m){
     const lvl=' ['+c.ph+']';
     const effD=getEffectiveDates(c);
     if(effD.mid&&effD.mid.startsWith(ms))evs.push({date:effD.mid,type:'exam',label:c.code+lvl+' 期中',c});
-    if(effD.fin&&effD.fin.startsWith(ms))evs.push({date:effD.fin,type:'exam',label:c.code+lvl+(effD.fin2?' D2':' 期末'),c});
-    if(effD.fin2&&effD.fin2.startsWith(ms))evs.push({date:effD.fin2,type:'exam',label:c.code+lvl+' D1',c});
+    if(effD.fin&&effD.fin.startsWith(ms))evs.push({date:effD.fin,type:'exam',label:c.code+lvl+(effD.fin2?' D1':' 期末'),c});
+    if(effD.fin2&&effD.fin2.startsWith(ms))evs.push({date:effD.fin2,type:'exam',label:c.code+lvl+' D2',c});
   });
   UPG.forEach(u=>{
     if(u.ud&&u.ud.startsWith(ms))
@@ -2327,6 +2329,7 @@ function isUpgAlreadyCreated(u){
   if(u.done) return true;
   const baseCode=u.code.replace(/\s*[\(（][^\)）]*[\)）]/g,'').trim();
   return getAllCLS().some(c=>{
+    if(c._pending) return false;
     const cBase=c.code.replace(/\s*[\(（][^\)）]*[\)）]/g,'').trim().replace(/\s+[A-Z]$/,'').trim();
     return (cBase===baseCode||c.code.startsWith(baseCode))&&c.ph===u.next;
   });
@@ -4549,6 +4552,21 @@ rAll();
   keysToRemove.forEach(k=>localStorage.removeItem(k));
 })();
 if(typeof rSal === 'function') rSal();
+// ── 清除 1120-M / 1120E-C5 舊的 fin/fin2 localStorage 覆蓋值 ──
+(function clearStaleFinOverrides(){
+  const ids = ['1120-M','1120E-C5'];
+  let ovr = {};
+  try { ovr = JSON.parse(localStorage.getItem('mli_cls_ovr')||'{}'); } catch(e){}
+  let changed = false;
+  ids.forEach(id => {
+    if(ovr[id] && (ovr[id].fin !== undefined || ovr[id].fin2 !== undefined)){
+      delete ovr[id].fin;
+      delete ovr[id].fin2;
+      changed = true;
+    }
+  });
+  if(changed) localStorage.setItem('mli_cls_ovr', JSON.stringify(ovr));
+})();
 // Apply lang after rAll so dynamic content is also translated
 (function(){ const l=localStorage.getItem('mli_lang')||'tw'; if(l==='cn') applyLang('cn'); })();
 </script>
