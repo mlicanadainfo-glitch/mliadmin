@@ -785,8 +785,8 @@ body.light tr.ended-row td { background: #f3f4f6 !important; }
   <div class="sbar-group">
     <span class="sbar-label" id="sb-lang-lbl">語言</span>
     <div class="sbar-pills">
-      <button class="spill on" id="sb-tw" onclick="setLang('tw')">繁體</button>
-      <button class="spill" id="sb-cn" onclick="setLang('cn')">简体</button>
+      <button class="spill" id="sb-tw" onclick="setLang('tw')">繁體</button>
+      <button class="spill on" id="sb-cn" onclick="setLang('cn')">简体</button>
     </div>
   </div>
   <div class="sbar-group" style="margin-left:auto">
@@ -997,12 +997,24 @@ body.light tr.ended-row td { background: #f3f4f6 !important; }
       <th>老師</th><th>類型</th><th>結算</th><th>時薪</th><th>堂數 ✎</th><th>時數</th><th>基本薪資</th><th>出勤 bonus ✎</th><th>升班獎勵</th><th>漲薪備注</th><th>合計（可加調整）</th><th></th>
     </tr></thead><tbody id="sal-mo"></tbody></table>
   </div>
+  <div class="sal-sh" style="margin-top:16px">🌐 加西班老師課時費（當月）</div>
+  <div class="tw" style="margin-bottom:4px">
+    <table><thead><tr>
+      <th>老师</th><th>班级 / 上课日期明细</th><th>总时数</th><th>出勤bonus</th><th>课时费合计</th>
+    </tr></thead><tbody id="sal-van"></tbody></table>
+  </div>
+  <div class="sal-tot-row" style="margin-bottom:10px">
+    <div class="sal-tot" style="border-color:var(--cyan)"><div class="sal-tot-l">加西班課時費合計</div><div class="sal-tot-v sv-c" id="st-van">$0</div></div>
+  </div>
   <div class="sal-tot-row" style="margin-top:10px">
-    <div class="sal-tot"><div class="sal-tot-l">雙週上半月</div><div class="sal-tot-v sv-c" id="st-p1">$0</div></div>
-    <div class="sal-tot"><div class="sal-tot-l">雙週下半月</div><div class="sal-tot-v sv-c" id="st-p2">$0</div></div>
-    <div class="sal-tot"><div class="sal-tot-l">月結</div><div class="sal-tot-v sv-y" id="st-mo">$0</div></div>
-    <div class="sal-tot"><div class="sal-tot-l">升班獎勵</div><div class="sal-tot-v sv-g" id="bt">$0</div></div>
-    <div class="sal-tot" style="border-color:var(--blue2)"><div class="sal-tot-l">本月總計</div><div class="sal-tot-v sv-b" id="tt">$0</div></div>
+    <div class="sal-tot"><div class="sal-tot-l">双週上半月</div><div class="sal-tot-v sv-c" id="st-p1">$0</div></div>
+    <div class="sal-tot"><div class="sal-tot-l">双週下半月</div><div class="sal-tot-v sv-c" id="st-p2">$0</div></div>
+    <div class="sal-tot"><div class="sal-tot-l">月结</div><div class="sal-tot-v sv-y" id="st-mo">$0</div></div>
+    <div class="sal-tot"><div class="sal-tot-l">升班奖励</div><div class="sal-tot-v sv-g" id="bt">$0</div></div>
+    <div class="sal-tot"><div class="sal-tot-l">加东课时费</div><div class="sal-tot-v sv-b" id="st-east">$0</div></div>
+    <div class="sal-tot"><div class="sal-tot-l">加西课时费</div><div class="sal-tot-v sv-c" id="st-van2">$0</div></div>
+    <div class="sal-tot"><div class="sal-tot-l">MTL课时费</div><div class="sal-tot-v sv-p" id="st-mtl">$0</div></div>
+    <div class="sal-tot" style="border-color:var(--blue2)"><div class="sal-tot-l">本月总计</div><div class="sal-tot-v sv-b" id="tt">$0</div></div>
   </div>
 </div><!-- /p5 -->
 
@@ -3420,6 +3432,207 @@ function applySalHidden(){
   });
 }
 
+// ══════════════════════════════════════════════════════════
+// 加西班薪資計算
+// ══════════════════════════════════════════════════════════
+const VAN_CLS_IDS = ['0303加西','0306加西-E','1215加西-E']; // 加西班 class ids
+const MTL_CLS_IDS = ['青少年']; // MTL 校區班級
+const VAN_RATE_OVERRIDE = {}; // 加西班專用時薪（如有需要）
+const VAN_EXCLUDE_TCH = new Set(['Sun Zhen']); // 不計入加西班薪資的老師
+
+function rVanSal(){
+  const yr = (document.getElementById('sal-m')||{}).value || '2026-03';
+  const [y, mo] = yr.split('-').map(Number);
+  const periodStart = yr + '-01';
+  const periodEnd = new Date(y, mo, 0).toISOString().slice(0, 10);
+
+  // 找所有加西班
+  const vanCls = getAllCLS().filter(c => VAN_CLS_IDS.includes(c.id));
+
+  // 收集每位老師在加西班的課時
+  const rows = []; // {tch, cls, rate, dates, hrs}
+  const totals = {}; // tch -> {hrs, pay}
+
+  vanCls.forEach(c => {
+    const ov = getO(c.id);
+    const tchArr = ov.tch != null ? ov.tch : (c.tch || []);
+    const clsStart = ov.startDate || c.startDate || periodStart;
+    const clsFin = ov.fin !== undefined ? ov.fin : (c.fin || null);
+    const effEnd = clsFin && clsFin < periodEnd ? clsFin : periodEnd;
+    const effStart = clsStart > periodStart ? clsStart : periodStart;
+    if(effStart > effEnd) return;
+
+    tchArr.forEach(entry => {
+      const baseName = entry.split('(')[0].trim();
+      if(VAN_EXCLUDE_TCH.has(baseName)) return; // 不計入此老師
+      const t = TCH.find(x => x.name === baseName);
+      if(!t) return;
+
+      // 加西班時薪：有特別覆蓋用覆蓋，否則用老師基礎時薪（不套漲薪，如 Xing 維持 $23）
+      const rate = VAN_RATE_OVERRIDE[baseName] !== undefined ? VAN_RATE_OVERRIDE[baseName] : t.rate;
+
+      // 這個老師在這個班的上課日
+      const tchDays = getTeacherDaysForClass(baseName, c);
+
+      // 加入離開日期判斷
+      const join = getTchJoin(baseName, c.id);
+      const joinFrom = join.from || clsStart;
+      const joinTo = join.to || null;
+      const tEffStart = [effStart, joinFrom].filter(Boolean).sort().pop();
+      let tEffEnd = effEnd;
+      if(joinTo && joinTo < tEffEnd) tEffEnd = joinTo;
+      if(tEffStart > tEffEnd) return;
+
+      let dates = getActualDates(c, tEffStart, tEffEnd, tchDays);
+      // Apply date overrides
+      const ovr = getDateOvr(baseName, c.id, yr);
+      dates = dates.filter(d => !ovr.removed.includes(d));
+      (ovr.added || []).forEach(d => { if(d >= tEffStart && d <= tEffEnd && !dates.includes(d)) dates.push(d); });
+      dates.sort();
+      if(!dates.length) return;
+
+      const hrs = dates.length * (c.privHrs || 3);
+      const basePay = hrs * rate;
+
+      // 出勤 bonus 拆分邏輯：
+      // 整月時數 > 25hr 且主管已勾選 → bonus $100（上限）
+      // 如果加東時數 ≥ 加西時數 → $100 全歸加東，加西 bonus = $0
+      // 如果加西時數 > 加東時數 → 加西承擔 $100
+      const fullHrs = estHoursAll(t, undefined);
+      const bonusEligible = fullHrs > 25 && SAL_BON[baseName] === true;
+      let bonusPay = 0;
+      if(bonusEligible){
+        // 計算這位老師的加西總時數（所有加西班累計）
+        // 暫存到 totals 裡，渲染時再決定
+        // 先存 0，等所有班算完後再統一計算
+      }
+      const pay = basePay; // bonus 後面統一加
+
+      rows.push({tch: baseName, cls: c.code, rate, dates, hrs, basePay, bonusPay: 0, pay, t, bonusEligible});
+      if(!totals[baseName]) totals[baseName] = {hrs: 0, pay: 0, bonusEligible, t};
+      totals[baseName].hrs += hrs;
+      totals[baseName].pay += basePay;
+    });
+  });
+
+  // 所有班算完後，統一計算加西 bonus
+  // 邏輯：加東時數 > 50hr → 加西 bonus = $0（加東已吸收 $100 上限）
+  //        加東時數 ≤ 50hr → 加西 bonus = 加西時數 × $2（正常計算）
+  Object.keys(totals).forEach(tname => {
+    const tot = totals[tname];
+    if(!tot.bonusEligible) return;
+    const vanHrs = tot.hrs;
+    const fullHrs = estHoursAll(tot.t, undefined);
+    const eastHrs = fullHrs - vanHrs;
+    const vanBonus = eastHrs > 50 ? 0 : vanHrs * 2;
+    tot.bonus = vanBonus;
+    tot.pay += vanBonus;
+    // 更新 rows 裡屬於這位老師的 bonusPay（加到最後一筆）
+    const tchRows = rows.filter(r => r.tch === tname);
+    if(tchRows.length && vanBonus > 0){
+      tchRows[tchRows.length-1].bonusPay = vanBonus;
+      tchRows[tchRows.length-1].pay += vanBonus;
+    }
+  });
+
+  // 渲染表格 — 按老師合併，每人一行
+  const tb = document.getElementById('sal-van');
+  if(!tb) return;
+
+  if(!rows.length){
+    tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:12px">此月份無加西班課時記錄</td></tr>';
+    document.getElementById('st-van').textContent = '$0';
+    return;
+  }
+
+  // 按老師分組合併
+  const tchNames = [...new Set(rows.map(r=>r.tch))];
+  const WDn=['日','一','二','三','四','五','六'];
+  let totalPay = 0;
+
+  tb.innerHTML = tchNames.map(tname => {
+    const tchRows = rows.filter(r=>r.tch===tname);
+    const tot = totals[tname];
+    const totalHrs = tot.hrs;
+    const totalBasePay = tot.pay - (tot.bonus||0);
+    const bonusPay = tot.bonus||0;
+    const rowTotalPay = tot.pay;
+    totalPay += rowTotalPay;
+
+    // 班級標籤 + 日期明細
+    const clsDetail = tchRows.map(r=>{
+      const tip = r.dates.map(d=>{
+        const dobj=new Date(d+'T12:00:00');
+        return d.slice(5)+'('+WDn[dobj.getDay()]+')';
+      }).join(' · ');
+      return '<span class="tag">'+r.cls+'</span> '
+        +'<span style="font-size:10px;color:var(--text2)">'+r.rate+'$/hr · '+(r.hrs/3).toFixed(0)+'堂</span>'
+        +'<div style="font-size:10px;color:var(--text3);margin:2px 0 6px 0;line-height:1.6">'+tip+'</div>';
+    }).join('');
+
+    // bonus 顯示
+    const t = tchRows[0].t;
+    const fullHrs = estHoursAll(t, undefined);
+    const eastHrs = fullHrs - totalHrs;
+    const bonusEligible = tchRows[0].bonusEligible;
+    const bonusHtml = !bonusEligible
+      ? '<span style="color:var(--text3);font-size:10px">—</span>'
+      : bonusPay > 0
+        ? '<span style="color:var(--green);font-size:11px">+$'+bonusPay+'</span><div style="font-size:9px;color:var(--text3)">'+totalHrs+'hr×$2</div>'
+        : '<span style="color:var(--text3);font-size:10px" title="加東時數已超50hr（'+eastHrs+'hr），bonus歸加東">$0</span><div style="font-size:9px;color:var(--text3)">加東>50hr</div>';
+
+    return '<tr>'
+      + '<td><strong>'+tname+'</strong></td>'
+      + '<td>'+clsDetail+'</td>'
+      + '<td style="font-family:\'IBM Plex Mono\',monospace;text-align:center">'+totalHrs+' hr</td>'
+      + '<td>'+bonusHtml+'</td>'
+      + '<td style="font-family:\'IBM Plex Mono\',monospace;font-weight:700;color:var(--cyan);font-size:16px">$'+rowTotalPay+'</td>'
+      + '</tr>';
+  }).join('');
+
+  document.getElementById('st-van').textContent = '$' + totalPay;
+
+  // ── MTL 校區課時費 ──
+  let mtlTotal = 0;
+  const mtlCls = getAllCLS().filter(c => MTL_CLS_IDS.includes(c.id));
+  mtlCls.forEach(c => {
+    const ov = getO(c.id);
+    const tchArr = ov.tch != null ? ov.tch : (c.tch || []);
+    const clsStart = ov.startDate || c.startDate || periodStart;
+    const clsFin = ov.fin !== undefined ? ov.fin : (c.fin || null);
+    const effEnd = clsFin && clsFin < periodEnd ? clsFin : periodEnd;
+    const effStart = clsStart > periodStart ? clsStart : periodStart;
+    if(effStart > effEnd) return;
+    tchArr.forEach(entry => {
+      const baseName = entry.split('(')[0].trim();
+      const t = TCH.find(x => x.name === baseName);
+      if(!t) return;
+      const rate = getMonthRate(t, yr, periodStart);
+      const tchDays = getTeacherDaysForClass(baseName, c);
+      let dates = getActualDates(c, effStart, effEnd, tchDays);
+      const ovr = getDateOvr(baseName, c.id, yr);
+      dates = dates.filter(d => !ovr.removed.includes(d));
+      (ovr.added||[]).forEach(d=>{ if(d>=effStart&&d<=effEnd&&!dates.includes(d)) dates.push(d); });
+      dates.sort();
+      if(!dates.length) return;
+      const hrs = dates.length * (c.privHrs || 3);
+      mtlTotal += hrs * rate;
+    });
+  });
+  // 把 mtlTotal 存到 DOM 供 rSal 讀取
+  const mtlEl = document.getElementById('st-mtl');
+  if(mtlEl) mtlEl.textContent = '$' + mtlTotal.toLocaleString();
+  // 同步更新加東欄
+  const eastEl = document.getElementById('st-east');
+  const van2El = document.getElementById('st-van2');
+  const ttEl = document.getElementById('tt');
+  if(eastEl && ttEl){
+    const ttAmt = parseInt(ttEl.textContent.replace(/[\$,]/g,''))||0;
+    if(eastEl) eastEl.textContent = '$'+(ttAmt - totalPay - mtlTotal).toLocaleString();
+    if(van2El) van2El.textContent = '$'+totalPay.toLocaleString();
+  }
+}
+
 function rSal(){
   // ① Pre-load per-month rates for display — 不覆蓋 t.rate 基礎值
   const ym=(document.getElementById('sal-m')||{}).value||'2026-03';
@@ -3451,8 +3664,10 @@ function rSal(){
   document.getElementById('st-p2').textContent='$'+tp2.toLocaleString();
   document.getElementById('st-mo').textContent='$'+tmo.toLocaleString();
   document.getElementById('bt').textContent='$'+tub.toLocaleString();
-  document.getElementById('tt').textContent='$'+(tp1+tp2+tmo).toLocaleString();
+  const eastTotal = tp1+tp2+tmo;
+  document.getElementById('tt').textContent='$'+eastTotal.toLocaleString();
   applySalHidden();
+  rVanSal();
 }
 
 function expSal(){
@@ -3967,7 +4182,7 @@ const TW2CN = {
 const CN2TW = {};
 Object.entries(TW2CN).forEach(([k,v])=>{ if(v && v!==k) CN2TW[v]=k; });
 
-let CURRENT_LANG = 'tw';
+let CURRENT_LANG = 'cn';
 
 // walk all text nodes under el and translate
 function translateNode(el, map){
@@ -4443,7 +4658,7 @@ function updateBonusDesc(){
 (function initSettings(){
   const theme=localStorage.getItem('mli_theme')||'dark';
   const font =localStorage.getItem('mli_font') ||'medium';
-  const lang =localStorage.getItem('mli_lang') ||'tw';
+  const lang =localStorage.getItem('mli_lang') ||'cn';
   // Guard: only run if settings bar elements exist
   if(!document.getElementById('sb-dark')) return;
   setTheme(theme);
