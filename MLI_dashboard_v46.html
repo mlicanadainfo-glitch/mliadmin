@@ -1985,7 +1985,7 @@ function getEvs(y,m){
     if(!n.date||!n.date.startsWith(ms))return;
     const alreadyCN=CN_STARTS.some(s=>s.date===n.date&&n.date===s.date);
     if(!alreadyCN)
-      evs.push({date:n.date,type:'new',label:'計劃新班'+(n.teacher?' '+n.teacher:'')+(n.shift?' '+n.shift:'')});
+      evs.push({date:n.date,type:'new',label:'計劃新班'+(n.className?' '+n.className:(n.teacher?' '+n.teacher:'')+(n.shift?' '+n.shift:''))});
   });
   return evs;
 }
@@ -4595,6 +4595,10 @@ if(typeof rSal === 'function') rSal();
       delete ovr[id].fin; delete ovr[id].fin2; changed = true;
     }
   });
+  // 清除 0826-E 舊的 startDate（若早於 CLB5 開課日 3/6，會導致 Jiang 多算一堂）
+  if(ovr['0826-E'] && ovr['0826-E'].startDate && ovr['0826-E'].startDate < '2026-03-06'){
+    delete ovr['0826-E'].startDate; changed = true;
+  }
   if(changed) localStorage.setItem('mli_cls_ovr', JSON.stringify(ovr));
 })();
 // Apply lang after rAll so dynamic content is also translated
