@@ -1977,7 +1977,7 @@ function getEvs(y,m){
     if(n.date&&n.date.startsWith(ms)){
       const alreadyCLS=getAllCLS().some(c=>c.cat==='intl'&&c.startDate===n.date);
       if(!alreadyCLS)
-        evs.push({date:n.date,type:'new',label:'國際計劃新班'+(n.className?' '+n.className:'')});
+        evs.push({date:n.date,type:'new',label:n.className?n.className:'國際計劃新班'});
     }
   });
   // CN new classes from NC_CN only if NOT already a real class (i.e. truly planned, not started)
@@ -1985,7 +1985,7 @@ function getEvs(y,m){
     if(!n.date||!n.date.startsWith(ms))return;
     const alreadyCN=CN_STARTS.some(s=>s.date===n.date&&n.date===s.date);
     if(!alreadyCN)
-      evs.push({date:n.date,type:'new',label:'計劃新班'+(n.className?' '+n.className:(n.teacher?' '+n.teacher:'')+(n.shift?' '+n.shift:''))});
+      evs.push({date:n.date,type:'new',label:n.className?n.className:'計劃新班'+(n.teacher?' '+n.teacher:'')+(n.shift?' '+n.shift:'')});
   });
   return evs;
 }
