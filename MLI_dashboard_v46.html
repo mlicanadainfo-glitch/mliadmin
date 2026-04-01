@@ -1115,13 +1115,11 @@ body.light tr.ended-row td { background: #f3f4f6 !important; }
 
 <script>
 const TODAY = new Date().toLocaleDateString('en-CA');
-const DATA_VERSION = 'v23.0';
+const DATA_VERSION = 'v24.0';
 (function(){
   const saved = localStorage.getItem('mli_data_ver');
   if(saved !== DATA_VERSION){
-    // v22.0：清除舊快取，重新讀取老師資料（Jiang改雙週、Fang Hui加A2班等）
-    ['mli_t','mli_logs','mli_rl','mli_nc_cn','mli_nc_intl','mli_todos',
-     'mli_cls_ovr','mli_cls_custom','mli_upg_stu','mli_sal_bon','mli_sal_cyc','mli_upg_tch','mli_date_ovr'].forEach(k=>localStorage.removeItem(k));
+    // v24.0：不再清除用戶資料，保留所有 localStorage
     localStorage.setItem('mli_data_ver', DATA_VERSION);
   }
 })();
@@ -1488,10 +1486,23 @@ let TCH = JSON.parse(localStorage.getItem('mli_t')||'null') || [
   {name:'Justin',type:'foreign',emp:'part',rate:20,cyc:'biweekly',cls:[],note:'已離職，歷史課時需手動記錄'},
 ];
 
-let LOGS = JSON.parse(localStorage.getItem('mli_logs')||'[]');
+let LOGS = JSON.parse(localStorage.getItem('mli_logs')||'null') || [
+  {id:1774986016910,type:'abs',cls:'0318-i',date:'2026-03-31',tch:'Ayuta',delay:'',note:''},
+  {id:1774915988718,type:'note',cls:'1217-衝',date:'2026-03-30',tch:'',delay:'',note:'結課：1217 E (2026-03-30)'},
+  {id:1774892520711,type:'note',cls:'1120-M',date:'2026-03-30',tch:'',delay:'',note:'手動修改 1120 M 期末考日期 → 2026-05-01'},
+  {id:1774884870412,type:'abs',cls:'1029-L4',date:'2026-03-24',tch:'Amine',delay:'',note:''},
+  {id:1774884859379,type:'abs',cls:'0826-E',date:'2026-03-10',tch:'Ranya',delay:'',note:''},
+  {id:1774884846944,type:'abs',cls:'0802-E',date:'2026-03-21',tch:'Radia',delay:'',note:''},
+  {id:1774884841878,type:'abs',cls:'0802-E',date:'2026-03-20',tch:'Radia',delay:'',note:''},
+  {id:1774884569559,type:'note',cls:'1029-L4',date:'2026-03-30',tch:'',delay:'',note:'手動修改 1029 期末考日期 → 2026-03-27'},
+  {id:1774884397440,type:'note',cls:'1024-E',date:'2026-03-30',tch:'',delay:'',note:'手動修改 1024 E 期末考日期 → 2026-04-10'},
+  {id:1774884370358,type:'note',cls:'0109-E',date:'2026-03-30',tch:'',delay:'',note:'手動修改 0109 E 期末考日期 → 2026-03-24'},
+  {id:1774882635329,type:'tch',cls:'0224-M',date:'2026-03-26',tch:'Maroua',delay:'',note:'3/26起 Justin → Maroua 接手0224 M週四五早班'},
+  {id:1774882635328,type:'tch',cls:'0213-E',date:'2026-03-12',tch:'Elnaz',delay:'',note:'3/12起 Justin → Elnaz 接手0213 E週四晚班'},
+];
 let RL = JSON.parse(localStorage.getItem('mli_rl')||'[]');
 let NC_CN = JSON.parse(localStorage.getItem('mli_nc_cn')||'null') || [
-  {stu:'7',mode:'線上',region:'加東',shift:'白班',date:'2026-04-02',days:'三四',time:'9:30–12:30',teacher:'Nadia',note:'0324升A2後接手，已確認',status:'confirm'},
+  {stu:'8',mode:'線上',region:'加東',shift:'晚班',date:'2026-04-06',days:'一三五',time:'18:30–21:30',teacher:'He(三五) + Nadia(一)',note:'已確認',status:'confirm',className:'0406 part time'},
   {stu:'8',mode:'線上',region:'加東',shift:'晚班',date:'2026-04-06',days:'一三五',time:'18:30–21:30',teacher:'He(三五) + Nadia(一)',note:'已確認',status:'confirm'},
   {stu:'',mode:'線上',region:'加東',shift:'晚班',date:'2026-04-13',days:'三五六',time:'18:30–21:30',teacher:'建議：Wissem(三) + Xing(五六)',note:'有意向，目前無人報名',status:'plan'},
   {stu:'1',mode:'線上',region:'加東',shift:'晚班',date:'2026-04-20',days:'二四六',time:'19:00–22:00',teacher:'建議：Toby(二四) + Nadia(六)',note:'待安排',status:'plan'},
@@ -1500,11 +1511,8 @@ let NC_CN = JSON.parse(localStorage.getItem('mli_nc_cn')||'null') || [
   {stu:'',mode:'線下',region:'加西',shift:'白班',date:'2026-04-27',days:'一～五',time:'9:30–12:30',teacher:'',note:'',status:'plan'},
 ];
 let NC_INTL = JSON.parse(localStorage.getItem('mli_nc_intl')||'null') || [
-  {stu:'12',mode:'線上',shift:'白班',date:'2026-01-29',days:'一～四',time:'9:30–12:30',teacher:'Lyon',note:'已開課',status:'confirm'},
-  {stu:'12',mode:'線上',shift:'晚班',date:'2026-02-18',days:'一～四',time:'19:00–22:00',teacher:'Widad',note:'已開課',status:'confirm'},
-  {stu:'10',mode:'線上',shift:'晚班',date:'2026-03-18',days:'一～四',time:'19:00–22:00',teacher:'Ayuta',note:'已開課',status:'confirm',className:'0318 Phase 1'},
-  {stu:'',mode:'線上',shift:'晚班',date:'2026-04-15',days:'一二三五',time:'18:45–21:45',teacher:'Sharfaa',note:'已確認',status:'confirm'},
-  {stu:'',mode:'線上',shift:'晚班',date:'2026-05-13',days:'一三四五',time:'',teacher:'Lyon',note:'',status:'plan'},
+  {stu:'',mode:'線上',shift:'晚班',date:'2026-04-15',days:'一二三五',time:'18:45–21:45',teacher:'Sharfaa',note:'或延至四月最後一週可找lyon',status:'confirm',className:'國際新班4月'},
+  {stu:'',mode:'線上',shift:'晚班',date:'2026-05-13',days:'一三四五',time:'',teacher:'Lyon',note:'',status:'plan',className:'國際新班5月'},
 ];
 let TODOS = JSON.parse(localStorage.getItem('mli_todos')||'null') || [
   {id:1,item:'安排CLB5外教 — 0926 E',cls:'0926 E',deadline:'2026-04-04',status:'done',note:'已確認：Xing(週二)＋Wissem(週五六)'},
@@ -1518,7 +1526,15 @@ let TODOS = JSON.parse(localStorage.getItem('mli_todos')||'null') || [
 ];
 
 // ── CLS FIELD OVERRIDES ──
-let CLS_OVR = JSON.parse(localStorage.getItem('mli_cls_ovr')||'{}');
+const CLS_OVR_DEFAULT = {
+  '0109-E':   {fin:'2026-03-24'},
+  '1024-E':   {fin:'2026-04-10'},
+  '1029-L4':  {fin:'2026-03-27'},
+  '1217-衝':  {note:'已結課 2026-03-30'},
+  '1120-M':   {},
+};
+let CLS_OVR = JSON.parse(localStorage.getItem('mli_cls_ovr')||'null');
+if(CLS_OVR === null){ CLS_OVR = JSON.parse(JSON.stringify(CLS_OVR_DEFAULT)); localStorage.setItem('mli_cls_ovr', JSON.stringify(CLS_OVR)); }
 function saveCO(){localStorage.setItem('mli_cls_ovr',JSON.stringify(CLS_OVR));}
 function getO(id){return CLS_OVR[id]||{};}
 function setO(id,field,val){if(!CLS_OVR[id])CLS_OVR[id]={};CLS_OVR[id][field]=val;saveCO();}
@@ -1721,12 +1737,16 @@ function confirmLink(id){
   closeModal();rCls();
 }
 // ── SALARY BONUS CHECKBOX ──
-let SAL_BON = JSON.parse(localStorage.getItem('mli_sal_bon')||'{}');
+const SAL_BON_DEFAULT = {'Sun Zhen':true,'Afaf':true,'Amine':false,'Elnaz':true,'Fang Hui':true,'He':true,'Jade':true,'Lyon':true,'Jessica':true,'Maroua':true,'Maya':true,'Vivianne':true,'Widad':true,'Wissem':true,'Dai':true,'Jiang':false,'Sun Chao':true,'Sun Zehan':true,'Tan':true,'Toby':true,'Xing':true,'Sharfaa':true};
+let SAL_BON = JSON.parse(localStorage.getItem('mli_sal_bon')||'null');
+if(SAL_BON === null){ SAL_BON = {...SAL_BON_DEFAULT}; localStorage.setItem('mli_sal_bon', JSON.stringify(SAL_BON)); }
 function saveSB(){localStorage.setItem('mli_sal_bon',JSON.stringify(SAL_BON));}
 function setBon(name,checked){SAL_BON[name]=checked;saveSB();rSal();}
 
 // ── 額外獎勵（手動輸入，每人每期）key = name+'::'+period ──
-let SAL_EXT = JSON.parse(localStorage.getItem('mli_sal_ext')||'{}');
+const SAL_EXT_DEFAULT = {'Jade::p2':50,'Amine::p2':50,'Lyon::p2':50};
+let SAL_EXT = JSON.parse(localStorage.getItem('mli_sal_ext')||'null');
+if(SAL_EXT === null){ SAL_EXT = {...SAL_EXT_DEFAULT}; localStorage.setItem('mli_sal_ext', JSON.stringify(SAL_EXT)); }
 function saveSE(){localStorage.setItem('mli_sal_ext',JSON.stringify(SAL_EXT));}
 function setSalExt(name,period,val){const k=name+'::'+period;const v=parseInt(val)||0;if(v===0)delete SAL_EXT[k];else SAL_EXT[k]=v;saveSE();rSal();}
 function getSalExt(name,period){return SAL_EXT[name+'::'+period]||0;}
@@ -2261,7 +2281,9 @@ function rCls(){
 function clf(f,btn){CIF=f;document.querySelectorAll('#p1 .fb').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');rCls();}
 
 // UPG teacher overrides (persisted)
-let UPG_STU = JSON.parse(localStorage.getItem('mli_upg_stu')||'{}');
+const UPG_STU_DEFAULT = {'0129(白)::Phase1::2026-04-13':7};
+let UPG_STU = JSON.parse(localStorage.getItem('mli_upg_stu')||'null');
+if(UPG_STU === null){ UPG_STU = {...UPG_STU_DEFAULT}; localStorage.setItem('mli_upg_stu', JSON.stringify(UPG_STU)); }
 function saveUpgStu(){localStorage.setItem('mli_upg_stu',JSON.stringify(UPG_STU));}
 function upgStuKey(u){return u.code+'::'+u.ph+'::'+u.ud;}
 function getUpgStu(u){const k=upgStuKey(u);return UPG_STU[k]!=null?UPG_STU[k]:u.stu;}
@@ -2339,7 +2361,6 @@ function rUpg(){
   const showHidden=document.getElementById('upg-show-hidden')?.checked||false;
   const allFilt=UPG.filter(u=>{
     if(isUpgAlreadyCreated(u)) return false;
-    // 只隱藏超過 30 天以前的升班記錄（近期已過的仍顯示）
     if(u.ud && daysDiff(u.ud) < -30) return false;
     const m=u.ud?parseInt(u.ud.slice(5,7)):0;
     const y=u.ud?u.ud.slice(0,4):'';
@@ -2847,16 +2868,22 @@ function estLessons(t, factor, halfSlot){
   return autoLes + manualLes;
 }
 function estHours(t, factor, halfSlot){
+  // base 薪資用：排除公開課（公開課獨立計費）
   const yr=(document.getElementById('sal-m')||{}).value||'2026-03';
   if(halfSlot===undefined){
-    // 整月：系統時數 + 上半月手動 + 下半月手動 + 月結手動
     const auto=calcTeacherSal(t, undefined).hours;
-    const manual=getManualHrs(t.name,yr,'p1')+getManualHrs(t.name,yr,'p2')+getManualHrs(t.name,yr,'mo');
+    const manual=getManualNonOpenHrs(t.name,yr,'p1')+getManualNonOpenHrs(t.name,yr,'p2')+getManualNonOpenHrs(t.name,yr,'mo');
     return auto+manual;
   }
-  // 指定期間：系統時數 + 該期間手動
   const auto=calcTeacherSal(t, halfSlot).hours;
-  const manual=getManualHrs(t.name,yr,halfSlot);
+  const manual=getManualNonOpenHrs(t.name,yr,halfSlot);
+  return auto+manual;
+}
+function estHoursAll(t, halfSlot){
+  // 出勤bonus用：含全部手動課時（包括公開課），整月計算
+  const yr=(document.getElementById('sal-m')||{}).value||'2026-03';
+  const auto=calcTeacherSal(t, undefined).hours;
+  const manual=getManualHrs(t.name,yr,'p1')+getManualHrs(t.name,yr,'p2')+getManualHrs(t.name,yr,'mo');
   return auto+manual;
 }
 
@@ -2998,6 +3025,11 @@ function getManualHrs(tname, yr, halfSlot){
   const list=_getManualList(tname, yr, halfSlot);
   return list.reduce((s,m)=>s+m.hrs,0);
 }
+// 排除公開課的手動時數（用於 base 計算）
+function getManualNonOpenHrs(tname, yr, halfSlot){
+  const list=_getManualList(tname, yr, halfSlot);
+  return list.filter(m=>m.type!=='openclass').reduce((s,m)=>s+m.hrs,0);
+}
 
 function _addManualHrs(tname, yr, halfSlot){
   const clsInp=document.getElementById('ml-cls-inp');
@@ -3111,7 +3143,7 @@ function salRowBonus(t,factor,period){
   const {s:periodStart}=getPeriodBounds(period);
   const rate=getMonthRate(t, null, periodStart);
   const base=hrs*rate;
-  const fullHrs=estHours(t,1,undefined); // 整月總時數（已含手動課時）
+  const fullHrs=estHoursAll(t,undefined); // 出勤bonus用整月含全部手動（含公開課）
   // 出勤 Bonus：整月時數（含手動）> 25hr 且主管勾選「全勤」→ 全月時數 × $2，上限 $100
   const eligible=fullHrs>25;
   const checked=SAL_BON[t.name]===true;
@@ -4560,9 +4592,7 @@ if(typeof rSal === 'function') rSal();
   let changed = false;
   ids.forEach(id => {
     if(ovr[id] && (ovr[id].fin !== undefined || ovr[id].fin2 !== undefined)){
-      delete ovr[id].fin;
-      delete ovr[id].fin2;
-      changed = true;
+      delete ovr[id].fin; delete ovr[id].fin2; changed = true;
     }
   });
   if(changed) localStorage.setItem('mli_cls_ovr', JSON.stringify(ovr));
